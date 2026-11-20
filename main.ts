@@ -10,16 +10,24 @@
 // Outside the grader's container, MAKEFUN_BOT_DIR and MAKEFUN_OUTPUT_DIR stand in for /bot and /output:
 //   mkdir -p out && MAKEFUN_BOT_DIR=. MAKEFUN_OUTPUT_DIR=out node main.ts
 
-import { copyFileSync, mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const BOT_DIR = process.env.MAKEFUN_BOT_DIR ?? '/bot';
 const OUTPUT_DIR = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
+const POST_URL_PREFIXES = ['https://x.com/', 'https://twitter.com/'];
 
 mkdirSync(OUTPUT_DIR, { recursive: true });
 try {
-  copyFileSync(join(BOT_DIR, 'POST.json'), join(OUTPUT_DIR, 'POST.json'));
+  const raw = readFileSync(join(BOT_DIR, 'POST.json'), 'utf8');
+  const post = JSON.parse(raw) as { url?: unknown };
+  if (typeof post.url !== 'string' || !POST_URL_PREFIXES.some((p) => post.url.startsWith(p))) {
+    console.error('POST.json must name the X post URL (https://x.com/... or https://twitter.com/...)');
+    process.exit(1);
+  }
+  writeFileSync(join(OUTPUT_DIR, 'POST.json'), JSON.stringify(post, null, 2) + '\n');
+  console.log(`gta6-meme-x-01 post: ${post.url}`);
 } catch (err) {
-  console.error(`POST.json could not be copied from ${BOT_DIR}: ${(err as Error).message}`);
+  console.error(`POST.json could not be read from ${BOT_DIR}: ${(err as Error).message}`);
   process.exit(1);
 }
